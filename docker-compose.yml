@@ -1,0 +1,31 @@
+
+services:
+  airflow:
+    build: .
+    container_name: airflow_scraper
+    restart: always
+    env_file: .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=some_random_fernet_key
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=false
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    volumes:
+      - ./dags:/opt/airflow/dags
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com &&
+        airflow scheduler & airflow webserver
+      "
+
+  chrome:
+    image: selenium/standalone-chrome:latest
+    shm_size: 2g
+    ports:
+      - "4444:4444"
+    environment:
+      - SE_NODE_SESSION_TIMEOUT=60
+      - SE_START_XVFB=true
