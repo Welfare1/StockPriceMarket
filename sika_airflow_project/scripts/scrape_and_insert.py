@@ -15,19 +15,16 @@ client = MongoClient(os.getenv("MONGO_URI"))
 db = client["sika_finance"]
 collection = db["historique_actions"]
 
-from datetime import datetime
-
 def get_last_record_date():
-    # Récupère le premier enregistrement de la collection en supposant que les données sont déjà triées par date
-    last_record = collection.find_one()  # Le premier enregistrement sera le plus récent si les données sont déjà triées
+    # Récupère le dernier enregistrement de la collection triée par date, en supposant que les données sont déjà triées
+    last_record = collection.find_one(sort=[("historique.Date", -1)])  # Tri par date descendante
     
     if last_record:
-        # On suppose que "Date" est sous forme de chaîne, donc on la convertit en datetime
-        last_date_str = last_record["historique"][0]["Date"]
+        # Récupère la dernière date de l'historique et la convertit en datetime
+        last_date_str = last_record["historique"][-1]["Date"]
         
-        # Si la date est sous forme de chaîne de caractères, on la convertit
         try:
-            last_date = datetime.strptime(last_date_str, "%d/%m/%Y")  # Format à adapter selon le format de la date
+            last_date = datetime.strptime(last_date_str, "%d/%m/%Y")  # Format de la date dans la base
             return last_date
         except ValueError:
             print(f"Erreur de format pour la date: {last_date_str}")
@@ -39,7 +36,7 @@ last_date_str = get_last_record_date()
 
 # Si des données existent déjà, commence à partir de la dernière date, sinon récupère depuis une date spécifique
 if last_date_str:
-        date_from = (last_date_str + timedelta(days=1)).strftime("%d/%m/%Y")
+    date_from = (last_date_str + timedelta(days=1)).strftime("%d/%m/%Y")
 else:
     # Si aucune donnée dans la base, on commence depuis une date spécifique (par exemple, 1er janvier 2025)
     date_from = "01/01/2025"
@@ -80,7 +77,7 @@ for nom_action, valeur in options:
         dateto_input = driver.find_element(By.ID, "dateto")
 
         datefrom_input.clear()
-        datefrom_input.send_keys(date_from)
+        datefrom_input.send_keys(date_from.strftime("%d/%m/%Y"))
         dateto_input.clear()
         dateto_input.send_keys(date_to)
 
@@ -96,9 +93,12 @@ for nom_action, valeur in options:
 
             df = pd.DataFrame(rows, columns=headers)
             df["Action"] = nom_action
-            df["Date"] = date_from  # Ajouter la date de récupération
+            df["Date"] = datetime.strptime(date_from.strftime("%d/%m/%Y"), "%d/%m/%Y")  # Convertir la date au format datetime
 
             data = df.to_dict(orient="records")
+
+            # Trier les données par date (si la base est vide, ce tri est important)
+            data.sort(key=lambda x: datetime.strptime(x["Date"], "%d/%m/%Y"))
 
             # Mettre à jour ou insérer les nouvelles données dans la base
             collection.update_one(

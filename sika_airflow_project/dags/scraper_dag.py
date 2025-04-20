@@ -7,9 +7,11 @@ import subprocess
 def run_scraping_script():
     subprocess.run(["python", "/app/scrape_and_insert.py"])
 
+
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2025, 4, 11),
+    'start_date': datetime(2025, 4, 16),
+    
 }
 
 dag = DAG(
